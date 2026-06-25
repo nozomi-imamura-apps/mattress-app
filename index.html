@@ -68,6 +68,8 @@
   .chip.ad{background:var(--adv-bg);border-color:var(--adv-bd);color:var(--adv-tx)}
   .chip.os{background:var(--osc-bg);border-color:var(--osc-bd);color:var(--osc-tx)}
   .chip.repair{background:var(--rep-bg);border-color:var(--rep-bd);color:var(--rep-tx)}
+  .chip.loan{background:#eef1f5;border-color:#9aa6b3;color:#3f4a57}
+  .loan-warn{display:block;margin-top:2px;font-size:9px;font-weight:700;color:#c0392b;background:#fde3e1;border-radius:4px;padding:1px 3px}
   .chip.sel{box-shadow:0 0 0 3px #ffd27a;cursor:grabbing}
 
   .ns{background:var(--indigo);color:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;
@@ -130,6 +132,20 @@
   .toast{position:fixed;left:50%;top:12px;transform:translateX(-50%);background:#2b3440;color:#fff;padding:9px 17px;
          border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
   .toast.show{opacity:1}
+  .ledger-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .ledger-head h2{margin:0;font-size:18px}
+  .ledger-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .ledger-table th,.ledger-table td{border:1px solid #ccd3da;padding:5px 7px;text-align:left}
+  .ledger-table th{background:#eef1f5}
+
+  @media print{
+    .top,.legend,.tabs,.hintbar,.no-print{display:none !important}
+    .body{display:block !important; height:auto !important}
+    .view{display:none !important}
+    #ledger{display:block !important}
+    .scroll{overflow:visible !important; height:auto !important}
+    .ledger-table{font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -146,6 +162,7 @@
   <button class="tab" data-v="list" onclick="tab('list')">マットレス</button>
   <button class="tab" data-v="hist" onclick="tab('hist')">変更履歴</button>
   <button class="tab" data-v="sum" onclick="tab('sum')">集計</button>
+  <button class="tab" data-v="ledger" onclick="tab('ledger')">📋 管理簿</button>
   <button class="tab" data-v="admin" onclick="tab('admin')">⚙ 管理</button>
 </div>
 
@@ -170,6 +187,7 @@
   <div id="list" class="view"><div class="scroll" id="listBody"></div></div>
   <div id="hist" class="view"><div class="scroll" id="histBody"></div></div>
   <div id="sum" class="view"><div class="scroll" id="sumBody"></div></div>
+  <div id="ledger" class="view"><div class="scroll" id="ledgerBody"></div></div>
   <div id="admin" class="view"><div class="scroll" id="adminBody"></div></div>
 </div>
 
@@ -235,7 +253,7 @@ function layoutInit(){
   ROOMS.filter(r=>r.band==="midL").forEach(r=>{ r.x=x; r.y=midY; x+=estW(r)+GAP; });
   TILES={};
   TILES.ns={x:x+34,y:midY+4,w:118,h:70};   x+=190;
-  TILES.store={x:x+18,y:midY-30}; TILES.repair={x:x+18,y:midY+140}; x+=214;
+  TILES.store={x:x+18,y:midY-30}; TILES.repair={x:x+18,y:midY+140}; TILES.loan={x:x+200,y:midY-30}; x+=400;
   ROOMS.filter(r=>r.band==="midR").forEach(r=>{ r.x=x; r.y=midY; x+=estW(r)+GAP; });
   const botY=366;
   x=14;
@@ -274,13 +292,18 @@ function quick(kind){ if(!SEL) return; const id=SEL;
 function tryDrop(t){ if(!SEL) return; const id=SEL;
   if(t.k==="room"){ if(move(id,{k:"room",room:t.room,bed:t.bed})) clearSel(); }
   else if(t.k==="store"){ move(id,{k:"store"}); clearSel(); }
-  else if(t.k==="repair"){ move(id,{k:"repair"}); clearSel(); } }
+  else if(t.k==="repair"){ move(id,{k:"repair"}); clearSel(); }
+  else if(t.k==="loan"){ const f=prompt("貸出先は何階ですか？（数字）"); if(f){ move(id,{k:"loan",floor:String(f).trim()}); clearSel(); } } }
 
 /* ---------- render: map ---------- */
-function chipHtml(m){ const inRepair=m.loc.k==="repair";
-  const cls=inRepair?"repair":m.type;
-  const lbl=inRepair?"修理中":typeLabel(m.type);
-  return `<div class="chip ${cls} ${SEL===m.id?'sel':''}" draggable="${!editing}" data-chip="${m.id}"><small>${lbl}</small>${m.id}</div>`; }
+function lastMoveTs(id){ const h=HISTORY.find(x=>x.id===id); return h?h.ts:null; }
+function daysSince(ts){ if(!ts) return null; return Math.floor((Date.now()-ts.getTime())/86400000); }
+function chipHtml(m){ const inRepair=m.loc.k==="repair", onLoan=m.loc.k==="loan";
+  const cls=inRepair?"repair":(onLoan?"loan":m.type);
+  const lbl=inRepair?"修理中":(onLoan?`${m.loc.floor}階`:typeLabel(m.type));
+  let warn="";
+  if(onLoan){ const d=daysSince(lastMoveTs(m.id)); if(d!==null&&d>=7) warn=`<span class="loan-warn" title="貸出から${d}日経過">⚠${d}日</span>`; }
+  return `<div class="chip ${cls} ${SEL===m.id?'sel':''}" draggable="${!editing}" data-chip="${m.id}"><small>${lbl}</small>${m.id}${warn}</div>`; }
 function bedHtml(roomKey,bed){ const m=mattressAt(roomKey,bed);
   const drop=m?'':`data-drop='${JSON.stringify({k:"room",room:roomKey,bed})}'`;
   return `<div class="bed ${m?'':'empty'}" ${drop}><span class="bn">${bed}</span>${m?chipHtml(m):'<span class="dash">—</span>'}</div>`; }
@@ -298,10 +321,12 @@ function renderMap(){
   const cv=document.getElementById("canvas"); cv.classList.toggle("edit",editing);
   const store=Object.values(M).filter(m=>m.loc.k==="store");
   const repair=Object.values(M).filter(m=>m.loc.k==="repair");
+  const loan=Object.values(M).filter(m=>m.loc.k==="loan").sort((a,b)=>(a.loc.floor+"").localeCompare(b.loc.floor+"",'ja',{numeric:true}));
   const parts=ROOMS.map(roomTile);
   parts.push(`<div class="ns tile" data-tile="ns" style="left:${TILES.ns.x}px;top:${TILES.ns.y}px;width:${TILES.ns.w||118}px;height:${TILES.ns.h||70}px">ナース<br>ステーション<span class="ns-handle" data-ns-resize="1"></span></div>`);
   parts.push(zoneTile("store","🗄️","倉庫",store,TILES.store));
   parts.push(zoneTile("repair","🔧","修理中",repair,TILES.repair));
+  parts.push(zoneTile("loan","🏢","他部署へ貸出中",loan,TILES.loan));
   cv.innerHTML=parts.join("");
   sizeBoard(); fitMap();
 }
@@ -326,6 +351,7 @@ function setTilePos(tid,x,y){
   if(tid==="ns") TILES.ns={...TILES.ns,x,y};
   else if(tid==="store") TILES.store={x,y};
   else if(tid==="repair") TILES.repair={x,y};
+  else if(tid==="loan") TILES.loan={x,y};
   else if(tid.indexOf("room:")===0){ const r=roomByKey(tid.slice(5)); if(r){ r.x=x; r.y=y; } }
 }
 function setNsSize(w,h){ TILES.ns={...TILES.ns, w:Math.max(80,w), h:Math.max(54,h)}; }
@@ -368,6 +394,31 @@ function renderSum(){
   document.getElementById("sumBody").innerHTML=`
     <div class="stats">${st(all.length,"総台数")}${TYPES.map(t=>st(c(m=>m.type===t.k),t.label)).join("")}${st(c(m=>m.loc.k==="room"),"使用中（病室）")}</div>
     <div class="stats">${st(c(m=>m.loc.k==="store"),"倉庫（未使用）")}${st(c(m=>m.loc.k==="loan"),"他部署へ貸出")}${st(c(m=>m.loc.k==="repair"),"修理中")}${st(beds-c(m=>m.loc.k==="room"),"空きベッド")}</div>`;
+}
+
+/* ---------- render: 管理簿（印刷用） ---------- */
+function renderLedger(){
+  const rows=Object.values(M).sort((a,b)=>a.id.localeCompare(b.id,'ja'));
+  const today=new Date(); const p=n=>String(n).padStart(2,"0");
+  const dateStr=`${today.getFullYear()}年${p(today.getMonth()+1)}月${p(today.getDate())}日`;
+  const tr=rows.map((m,i)=>{
+    const last=HISTORY.find(h=>h.id===m.id);
+    const d=last?daysSince(last.ts):null;
+    const stayTxt=d===null?"—":(d===0?"本日":`${d}日`);
+    const moveTxt=last?`${fmtTs(last.ts)}　${last.from} → ${last.to}（${last.user}）`:"—（履歴なし）";
+    const warn=(m.loc.k==="loan"||m.loc.k==="repair")&&d!==null&&d>=7?' style="background:#fdeceb"':"";
+    return `<tr${warn}><td>${i+1}</td><td><b>${m.id}</b></td><td>${typeLabel(m.type)}</td>
+      <td>${locLabel(m.loc)}</td><td style="text-align:center">${stayTxt}</td>
+      <td style="color:#55606e;font-size:12px">${moveTxt}</td><td style="width:70px"></td></tr>`;
+  }).join("");
+  document.getElementById("ledgerBody").innerHTML=`
+    <div class="toolbar no-print"><button class="btn" onclick="window.print()">🖨 印刷する</button>
+      <span style="color:#8a96a4;font-size:12px">印刷ダイアログでは「PDFに保存」も選べます（iPadもOK）。</span></div>
+    <div id="printArea">
+      <div class="ledger-head"><h2>マットレス管理簿</h2><div>作成日：${dateStr}　/　総台数：${rows.length}台</div></div>
+      <table class="ledger-table"><thead><tr><th>No</th><th>ID</th><th>種別</th><th>現在の場所</th><th>滞在日数</th><th>直近の移動履歴</th><th>確認者印</th></tr></thead>
+      <tbody>${tr}</tbody></table>
+    </div>`;
 }
 
 /* ---------- render: admin ---------- */
@@ -422,6 +473,7 @@ function loadState(){ try{
     HISTORY=(d.history||[]).map(h=>({...h,ts:new Date(h.ts)}));
     TILES=d.tiles;
     if(!TILES || ROOMS.some(x=>typeof x.x!=="number")) layoutInit();
+    else if(!TILES.loan) TILES.loan={x:TILES.store.x+200,y:TILES.store.y};
     return true;
   }catch(e){ return false; } }
 
@@ -464,6 +516,7 @@ document.getElementById("importFile").onchange=e=>{ const f=e.target.files[0]; i
     HISTORY=(d.history||[]).map(h=>({...h,ts:new Date(h.ts)}));
     if(d.tiles) TILES=d.tiles;
     if(!TILES || ROOMS.some(x=>typeof x.x!=="number")) layoutInit();
+    else if(!TILES.loan) TILES.loan={x:TILES.store.x+200,y:TILES.store.y};
     editing=false; document.getElementById("editBtn").textContent="⇄ 配置を編集"; document.getElementById("editHint").style.display="none";
     document.getElementById("mapWrap").style.overflow="hidden";
     refreshUsers(); renderAll(); tab("map"); toast("設定を読み込みました"); }
@@ -478,7 +531,7 @@ function tab(v){ document.querySelectorAll(".tab").forEach(t=>t.classList.toggle
   document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id===v));
   if(v!=="map") clearSel(); if(v==="map") requestAnimationFrame(renderMap); }
 function openAdd(){ tab("admin"); document.getElementById("newMatId")?.focus(); }
-function renderAll(){ renderMap(); renderList(); renderHist(); renderSum(); renderAdmin(); saveState(); }
+function renderAll(){ renderMap(); renderList(); renderHist(); renderSum(); renderLedger(); renderAdmin(); saveState(); }
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1700);}
 
 const mapEl=document.getElementById("map");
