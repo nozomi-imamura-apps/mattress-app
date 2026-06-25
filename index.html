@@ -9,6 +9,8 @@
     --indigo:#3a5ba8; --indigo-d:#2c4684;
     --air-bg:#d9e6fb; --air-bd:#6f9be8; --air-tx:#274f8e;
     --nrm-bg:#d8f0dd; --nrm-bd:#6cc183; --nrm-tx:#256b3c;
+    --adv-bg:#ece2fb; --adv-bd:#a385e0; --adv-tx:#5a3494;
+    --osc-bg:#d8f3f3; --osc-bd:#52b8b8; --osc-tx:#176363;
     --rep-bg:#fbe3c5; --rep-bd:#e09a3e; --rep-tx:#8f5410;
     --empty-bd:#d6dde6; --ink:#2b3440; --muted:#8a96a4; --line:#e4e9f0; --bg:#eef2f7;
     --font:'Hiragino Kaku Gothic ProN','Yu Gothic Medium','Meiryo',system-ui,sans-serif;
@@ -61,8 +63,10 @@
   .chip{margin-top:7px;border-radius:6px;padding:4px 3px;width:46px;text-align:center;font-weight:700;font-size:12.5px;
         border:1.5px solid;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-user-drag:element;line-height:1.1;touch-action:manipulation}
   .chip small{display:block;font-size:9px;font-weight:600;opacity:.8}
-  .chip.air{background:var(--air-bg);border-color:var(--air-bd);color:var(--air-tx)}
-  .chip.normal{background:var(--nrm-bg);border-color:var(--nrm-bd);color:var(--nrm-tx)}
+  .chip.mu{background:var(--air-bg);border-color:var(--air-bd);color:var(--air-tx)}
+  .chip.st{background:var(--nrm-bg);border-color:var(--nrm-bd);color:var(--nrm-tx)}
+  .chip.ad{background:var(--adv-bg);border-color:var(--adv-bd);color:var(--adv-tx)}
+  .chip.os{background:var(--osc-bg);border-color:var(--osc-bd);color:var(--osc-tx)}
   .chip.repair{background:var(--rep-bg);border-color:var(--rep-bd);color:var(--rep-tx)}
   .chip.sel{box-shadow:0 0 0 3px #ffd27a;cursor:grabbing}
 
@@ -99,7 +103,8 @@
   th{background:#f5f8fc;color:#55606e;font-weight:700}
   tr:last-child td{border-bottom:none}
   .pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px}
-  .p-air{background:var(--air-bg);color:var(--air-tx)} .p-normal{background:var(--nrm-bg);color:var(--nrm-tx)}
+  .p-mu{background:var(--air-bg);color:var(--air-tx)} .p-st{background:var(--nrm-bg);color:var(--nrm-tx)}
+  .p-ad{background:var(--adv-bg);color:var(--adv-tx)} .p-os{background:var(--osc-bg);color:var(--osc-tx)}
   .p-loc{background:#eef2f7;color:#55606e}
   td input,td select{padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:13px;background:#fff;width:100%}
   td input[type=number]{width:74px}
@@ -145,8 +150,10 @@
 </div>
 
 <div class="legend">
-  <span><i style="background:var(--air-bg);border:1px solid var(--air-bd)"></i>エアマット</span>
-  <span><i style="background:var(--nrm-bg);border:1px solid var(--nrm-bd)"></i>通常マット</span>
+  <span><i style="background:var(--air-bg);border:1px solid var(--air-bd)"></i>ムレーズ</span>
+  <span><i style="background:var(--nrm-bg);border:1px solid var(--nrm-bd)"></i>ステージア</span>
+  <span><i style="background:var(--adv-bg);border:1px solid var(--adv-bd)"></i>アドバン</span>
+  <span><i style="background:var(--osc-bg);border:1px solid var(--osc-bd)"></i>オスカー</span>
   <span><i style="background:var(--rep-bg);border:1px solid var(--rep-bd)"></i>修理中</span>
   <span><i style="background:#fbfcfe;border:1.5px dashed var(--empty-bd)"></i>未割り当て</span>
   <span class="note">ドラッグ、またはタップ→移動先タップで移動。動きは「変更履歴」に自動記録。</span>
@@ -177,6 +184,11 @@
 <input type="file" id="importFile" accept=".json" style="display:none">
 
 <script>
+/* ---------- mattress types ---------- */
+const TYPES=[{k:"mu",label:"ムレーズ"},{k:"st",label:"ステージア"},{k:"ad",label:"アドバン"},{k:"os",label:"オスカー"}];
+const typeLabel=k=>(TYPES.find(t=>t.k===k)||{label:k}).label;
+const typeOptions=sel=>TYPES.map(t=>`<option value="${t.k}" ${sel===t.k?"selected":""}>${t.label}</option>`).join("");
+
 /* ---------- data ---------- */
 let USERS, ROOMS, M, HISTORY, TILES, SEL=null, editing=false;
 const SNAP=10;
@@ -200,12 +212,12 @@ function initData(){
   ];
   M={};
   const s=(id,type,loc)=>M[id]={id,type,loc};
-  s("エ1","air",{k:"room",room:"obs",bed:2}); s("エ2","air",{k:"room",room:"r23",bed:1});
-  s("エ3","air",{k:"room",room:"obs",bed:3}); s("エ4","air",{k:"repair"});
-  s("エ5","air",{k:"room",room:"r9",bed:3});
-  s("普1","normal",{k:"room",room:"obs",bed:1}); s("普2","normal",{k:"room",room:"r6",bed:2});
-  s("普3","normal",{k:"store"}); s("普4","normal",{k:"store"});
-  s("普5","normal",{k:"room",room:"r22",bed:1}); s("普6","normal",{k:"store"}); s("普7","normal",{k:"store"});
+  s("ム1","mu",{k:"room",room:"obs",bed:2}); s("ム2","mu",{k:"room",room:"r23",bed:1});
+  s("ム3","mu",{k:"room",room:"obs",bed:3});
+  s("ス1","st",{k:"repair"}); s("ス2","st",{k:"room",room:"r9",bed:3});
+  s("ア1","ad",{k:"room",room:"obs",bed:1}); s("ア2","ad",{k:"room",room:"r6",bed:2});
+  s("ア3","ad",{k:"store"}); s("ア4","ad",{k:"store"});
+  s("オ1","os",{k:"room",room:"r22",bed:1}); s("オ2","os",{k:"store"}); s("オ3","os",{k:"store"});
   HISTORY=[];
   const base=new Date(); base.setDate(base.getDate()-7); base.setHours(9,0,0,0);
   Object.values(M).forEach((m,i)=>HISTORY.push({ts:new Date(base.getTime()+i*60000),id:m.id,type:m.type,from:"—（初期登録）",to:locLabel(m.loc),user:"初期設定"}));
@@ -266,8 +278,8 @@ function tryDrop(t){ if(!SEL) return; const id=SEL;
 
 /* ---------- render: map ---------- */
 function chipHtml(m){ const inRepair=m.loc.k==="repair";
-  const cls=inRepair?"repair":(m.type==="air"?"air":"normal");
-  const lbl=inRepair?"修理中":(m.type==="air"?"エア":"通常");
+  const cls=inRepair?"repair":m.type;
+  const lbl=inRepair?"修理中":typeLabel(m.type);
   return `<div class="chip ${cls} ${SEL===m.id?'sel':''}" draggable="${!editing}" data-chip="${m.id}"><small>${lbl}</small>${m.id}</div>`; }
 function bedHtml(roomKey,bed){ const m=mattressAt(roomKey,bed);
   const drop=m?'':`data-drop='${JSON.stringify({k:"room",room:roomKey,bed})}'`;
@@ -330,7 +342,7 @@ function renderList(){
   const q=(document.getElementById("listQ")?.value||"").trim();
   let rows=Object.values(M); if(q) rows=rows.filter(m=>m.id.includes(q)||locLabel(m.loc).includes(q));
   const tr=rows.map(m=>{ const off=m.loc.k==="loan"||m.loc.k==="repair";
-    return `<tr><td><b>${m.id}</b></td><td><span class="pill p-${m.type}">${m.type==="air"?"エアマット":"通常マット"}</span></td>
+    return `<tr><td><b>${m.id}</b></td><td><span class="pill p-${m.type}">${typeLabel(m.type)}</span></td>
       <td><span class="pill p-loc">${locLabel(m.loc)}</span></td>
       <td>${off?`<button class="mini" onclick="move('${m.id}',{k:'store'})">倉庫へ戻す</button>`:''}</td></tr>`;}).join("");
   document.getElementById("listBody").innerHTML=`<div class="toolbar"><input id="listQ" placeholder="ID・場所で検索" oninput="renderList()" value="${q}"></div>
@@ -342,7 +354,7 @@ function renderHist(){
   let rows=HISTORY; if(sel!=="all") rows=rows.filter(h=>h.id===sel);
   const opts=`<option value="all">すべてのマットレス</option>`+Object.keys(M).map(id=>`<option ${sel===id?'selected':''}>${id}</option>`).join("");
   const tr=rows.map(h=>`<tr><td style="white-space:nowrap;color:#55606e">${fmtTs(h.ts)}</td>
-      <td><b>${h.id}</b> <span class="pill p-${h.type}">${h.type==="air"?"エア":"通常"}</span></td>
+      <td><b>${h.id}</b> <span class="pill p-${h.type}">${typeLabel(h.type)}</span></td>
       <td style="color:#8a96a4">${h.from}</td><td>→ ${h.to}</td><td style="color:#55606e">${h.user}</td></tr>`).join("");
   document.getElementById("histBody").innerHTML=`<div class="toolbar">表示：<select id="histSel" onchange="renderHist()">${opts}</select>
       <span style="color:#8a96a4;font-size:12px">対象を選ぶと「いつ・どこにあったか」をさかのぼれます。</span></div>
@@ -354,7 +366,7 @@ function renderSum(){
   const beds=ROOMS.reduce((a,r)=>a+r.bedCount,0);
   const st=(n,l)=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`;
   document.getElementById("sumBody").innerHTML=`
-    <div class="stats">${st(all.length,"総台数")}${st(c(m=>m.type==="air"),"エアマット")}${st(c(m=>m.type==="normal"),"通常マット")}${st(c(m=>m.loc.k==="room"),"使用中（病室）")}</div>
+    <div class="stats">${st(all.length,"総台数")}${TYPES.map(t=>st(c(m=>m.type===t.k),t.label)).join("")}${st(c(m=>m.loc.k==="room"),"使用中（病室）")}</div>
     <div class="stats">${st(c(m=>m.loc.k==="store"),"倉庫（未使用）")}${st(c(m=>m.loc.k==="loan"),"他部署へ貸出")}${st(c(m=>m.loc.k==="repair"),"修理中")}${st(beds-c(m=>m.loc.k==="room"),"空きベッド")}</div>`;
 }
 
@@ -368,7 +380,7 @@ function renderAdmin(){
      <td style="width:90px"><button class="iconbtn" onclick="delRoom('${r.key}')">削除</button></td></tr>`).join("");
   const mats=Object.values(M).map(m=>`<tr>
      <td><input value="${m.id}" onchange="editMat('${m.id}','id',this.value)" style="width:90px"></td>
-     <td><select onchange="editMat('${m.id}','type',this.value)"><option value="air" ${m.type==="air"?"selected":""}>エアマット</option><option value="normal" ${m.type==="normal"?"selected":""}>通常マット</option></select></td>
+     <td><select onchange="editMat('${m.id}','type',this.value)">${typeOptions(m.type)}</select></td>
      <td><span class="pill p-loc">${locLabel(m.loc)}</span></td>
      <td style="width:90px"><button class="iconbtn" onclick="delMat('${m.id}')">削除</button></td></tr>`).join("");
   document.getElementById("adminBody").innerHTML=`
@@ -386,7 +398,7 @@ function renderAdmin(){
     <div class="acard"><h2>マットレス</h2>
       <table><thead><tr><th>ID</th><th>種類</th><th>現在地</th><th></th></tr></thead><tbody>${mats}</tbody></table>
       <div class="addrow"><input id="newMatId" placeholder="ID（例：エ6, 普8）" style="width:130px">
-        <select id="newMatType"><option value="air">エアマット</option><option value="normal">通常マット</option></select>
+        <select id="newMatType">${typeOptions(TYPES[0].k)}</select>
         <button class="btn" onclick="addMat()">＋ マットレスを追加（倉庫へ）</button></div></div>
 
     <div class="acard"><h2>データ</h2>
@@ -395,7 +407,7 @@ function renderAdmin(){
         <button class="btn ghost" onclick="document.getElementById('importFile').click()">設定を読み込み</button>
         <button class="btn ghost" onclick="resetAll()" style="color:#c0492f;border-color:#e7c3bb">初期状態に戻す</button>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:8px">操作内容はこのiPad（このブラウザ）の中に自動で保存され、次に開いたときもそのまま続きが表示されます。ただし端末の初期化やデータ消去で万一消えることに備えて、ときどき「設定をファイルに保存」でバックアップを取っておくと安心です（保存したJSONファイルはメールやSharePointに置いておけます）。</div></div>`;
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">操作内容はこのiPad（このブラウザ）の中に自動で保存され、次に開いたときもそのまま続きが表示されます。<b>このiPad以外にデータの控えはありません</b>。端末の初期化やデータ消去で万一消えることに備えて、定期的に「設定をファイルに保存」でバックアップを取っておいてください（保存したJSONファイルはメールやSharePointに置いておけます）。「初期状態に戻す」は本番データもすべて消えるため、普段は使わないでください。</div></div>`;
 }
 
 /* ---------- auto-save (iPad: data lives on-device, no file open/save dialogs) ---------- */
@@ -456,7 +468,10 @@ document.getElementById("importFile").onchange=e=>{ const f=e.target.files[0]; i
     document.getElementById("mapWrap").style.overflow="hidden";
     refreshUsers(); renderAll(); tab("map"); toast("設定を読み込みました"); }
     catch(err){ toast("読み込みに失敗しました"); } }; r.readAsText(f); e.target.value=""; };
-function resetAll(){ if(!confirm("すべて初期状態に戻しますか？"))return; initData(); refreshUsers(); renderAll(); tab("map"); toast("初期状態に戻しました"); }
+function resetAll(){
+  if(!confirm("本当に初期状態（サンプルデータ）に戻しますか？\n現在の登録内容（部屋・マットレス・履歴）はすべて消えます。\n\n押すと、念のため今の内容を自動でバックアップファイルとして保存してから初期化します。"))return;
+  exportJSON();
+  initData(); refreshUsers(); renderAll(); tab("map"); toast("初期状態に戻しました（直前の内容はバックアップファイルに保存済み）"); }
 
 /* ---------- tabs / add / events ---------- */
 function tab(v){ document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));
